@@ -5,23 +5,29 @@ from schemas.schemas import ApplicationCreate
 from services.scoring_service import get_credit_score
 from services.credit_engine import evaluate_application
 from repositories.application_repository import create_application, get_application
+from fastapi import UploadFile, File, HTTPException
+import shutil
+import os
+from services.ai_data_extraction import extract_document_info, validate_address_match
+import json
 
 router = APIRouter()
 
 @router.post("/applications")
-def create_new_application(data: ApplicationCreate, db: Session = Depends(get_db)):
-
-    score = get_credit_score()
-    status, explanation = evaluate_application(data, score)
+def create_new_application(data: ApplicationCreate,db: Session = Depends(get_db)):
 
     app_dict = data.dict()
-    app_dict["credit_score"] = score
-    app_dict["status"] = status
-    app_dict["explanation"] = explanation
+    app_dict["status"] = "PENDING"
+    app_dict["credit_score"] = None
+    app_dict["explanation"] = None
 
     application = create_application(db, app_dict)
 
-    return application
+    return {    
+        "id": application.id,
+        "status": application.status,
+        "message": "Application created successfully. Please upload documents."
+    }
 
 
 @router.get("/applications/{application_id}")
@@ -33,3 +39,48 @@ def get_application_status(application_id: int, db: Session = Depends(get_db)):
         return {"error": "Application not found"}
 
     return application
+
+
+
+@router.post("/applications/{application_id}/documents")
+def upload_document(application_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+
+    application = get_application(db, application_id)
+
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    upload_dir = "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    file_path = os.path.join(upload_dir, file.filename)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    
+    extracted_data = extract_document_info(file_path)
+
+    print("ia data >", extracted_data)
+
+    address_validation = validate_address_match(application.address, extracted_data["address"])
+    print("address validation >", address_validation)
+    match = address_validation["match"]
+
+    score = get_credit_score()
+    status, explanation = evaluate_application(application, score, match)
+
+    application.credit_score = score
+    application.status = status
+    application.explanation = explanation
+
+    db.commit()
+    db.refresh(application)
+
+    return {
+        "message": "Document processed successfully",
+        "status": status,
+        "credit_score": score,
+        "explanation": explanation,
+        "extracted_data": extracted_data
+    }

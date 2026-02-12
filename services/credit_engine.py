@@ -1,4 +1,4 @@
-def evaluate_application(data, score):
+def evaluate_application(data, score, address_match):
 
     if score < 500:
         return "rejected", "Score menor a 500."
@@ -11,5 +11,8 @@ def evaluate_application(data, score):
 
     if data.bank_seniority_months < 6:
         return "rejected", "Antigüedad bancaria insuficiente."
+    
+    if not address_match:
+        return "REJECTED", "La dirección del comprobante no coincide con la proporcionada."
 
     return "approved", "Solicitud aprobada. Cumple todas las reglas."   
