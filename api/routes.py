@@ -11,7 +11,7 @@ import os
 from services.ai_data_extraction import extract_document_info, validate_address_match
 import json
 from datetime import datetime
-
+from models.models import Application
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ def root():
 def create_new_application(data: ApplicationCreate,db: Session = Depends(get_db)):
 
     app_dict = data.dict()
-    app_dict["status"] = "PENDING"
+    app_dict["status"] = "PENDIENTE"
     app_dict["credit_score"] = None
     app_dict["explanation"] = None
 
@@ -59,7 +59,7 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail="Document processing failed"
+            detail=str(e)
         )
 
     print("ia data >", extracted_data)
@@ -100,3 +100,21 @@ def get_application_status(application_id: int, db: Session = Depends(get_db)):
         return {"error": "Application not found"}
 
     return application
+
+
+@router.get("/metrics")
+def get_metrics(db: Session = Depends(get_db)):
+    total = db.query(Application).count()
+    approved = db.query(Application).filter(Application.status == "APROBADO").count()
+    rejected = db.query(Application).filter(Application.status == "RECHAZADO").count()
+    pending = db.query(Application).filter(Application.status == "PENDIENTE").count()
+
+    approval_rate = round((approved / total) * 100, 2) if total else 0
+
+    return {
+        "total": total,
+        "approved": approved,
+        "rejected": rejected,
+        "pending": pending,
+        "approval_rate_percent": approval_rate
+    }
