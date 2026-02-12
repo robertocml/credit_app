@@ -111,6 +111,14 @@
             </div>
             <button type="button" class="btn btn-blue w-100" onclick="uploadDocument()">Subir Documento</button>
             <div id="uploadResult" class="mt-3"></div>
+
+            <div id="uploadResult" class="mt-3"></div>
+            <div id="uploadLoading" class="text-center my-2" style="display:none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <div>Cargando...</div>
+            </div>
         </div>
     </div>
 
@@ -163,28 +171,35 @@ async function uploadDocument() {
     const formData = new FormData();
     formData.append("file", file);
 
+    const loading = document.getElementById("uploadLoading");
+    const resultDiv = document.getElementById("uploadResult");
+    loading.style.display = "block";
+    resultDiv.innerHTML = "";
+
     try {
         const response = await fetch(`/applications/${appId}/documents`, {
             method: "POST",
             body: formData
         });
 
+        loading.style.display = "none"; 
+
         if (!response.ok) {
-            // Aquí capturamos el error
-            const errorData = await response.json();
-            document.getElementById("uploadResult").innerHTML =
-                `<span class="status-span">Error: ${errorData.detail || "Something went wrong"}</span>`;
+            const errorData = await response.json().catch(() => ({}));
+            resultDiv.innerHTML =
+                `<span class="status-span text-danger">Error: ${errorData.detail || "Algo salió mal"}</span>`;
             return;
         }
 
         const result = await response.json();
-        document.getElementById("uploadResult").innerHTML =
-            `Status: <span class="status-span">${result.status}</span><br>
+        resultDiv.innerHTML =
+            `Status: <span class="status-span text-primary">${result.status}</span><br>
              Score: ${result.credit_score}<br>
              ${result.explanation}`;
     } catch (err) {
-        document.getElementById("uploadResult").innerHTML =
-            `<span class="status-span">Network or unexpected error: ${err.message}</span>`;
+        loading.style.display = "none";
+        resultDiv.innerHTML =
+            `<span class="status-span text-danger">Error de red o inesperado: ${err.message}</span>`;
     }
 }
 
