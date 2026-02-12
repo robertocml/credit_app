@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends
+import os
+import shutil
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import status as st
 from sqlalchemy.orm import Session
+
 from db.database import get_db
+from models.models import Application
 from schemas.schemas import ApplicationCreate
 from services.scoring_service import get_credit_score
 from services.credit_engine import evaluate_application
-from repositories.application_repository import create_application, get_application
-from fastapi import UploadFile, File, HTTPException
-import shutil
-import os
 from services.ai_data_extraction import extract_document_info, validate_address_match
-import json
-from datetime import datetime
-from models.models import Application
-from fastapi import status as st
+from repositories.application_repository import create_application, get_application
 
 
 router = APIRouter()
@@ -105,10 +105,12 @@ def get_application_status(application_id: int, db: Session = Depends(get_db)):
     application = get_application(db, application_id)
 
     if not application:
-        return {"error": "Application not found"}
+        raise HTTPException(status_code=404, detail="Application not found")
 
-    return application
-
+    return {
+        "id": application.id,
+        "status": application.status
+    }
 
 @router.get("/metrics")
 def get_metrics(db: Session = Depends(get_db)):
