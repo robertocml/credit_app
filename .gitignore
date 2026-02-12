@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+credit_app/
+
+# Database
+*.db
+
+# Environment variables
+.env
+
+# Mac
+.DS_Store

@@ -1,2 +1,2 @@
 # credit_app
-Simple credit app 
+Simple credit app.
