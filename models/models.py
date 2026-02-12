@@ -1,6 +1,10 @@
 from sqlalchemy import Column, Integer, String, Float, Text
 from db.database import Base
 
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from datetime import datetime
+
+
 class Application(Base):
     __tablename__ = "applications"
 
@@ -17,3 +21,8 @@ class Application(Base):
     credit_score = Column(Integer)
     status = Column(String)
     explanation = Column(Text)
+
+    address_extracted = Column(String, nullable=True)
+    address_match = Column(Boolean, nullable=True)
+    evaluation_timestamp = Column(DateTime, nullable=True)
+    decision_engine_version = Column(String, nullable=True)

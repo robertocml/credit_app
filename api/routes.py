@@ -10,8 +10,14 @@ import shutil
 import os
 from services.ai_data_extraction import extract_document_info, validate_address_match
 import json
+from datetime import datetime
+
 
 router = APIRouter()
+
+@router.get("/")
+def root():
+    return {"message": "Fintech Credit Engine API running"}
 
 @router.post("/applications")
 def create_new_application(data: ApplicationCreate,db: Session = Depends(get_db)):
@@ -28,17 +34,6 @@ def create_new_application(data: ApplicationCreate,db: Session = Depends(get_db)
         "status": application.status,
         "message": "Application created successfully. Please upload documents."
     }
-
-
-@router.get("/applications/{application_id}")
-def get_application_status(application_id: int, db: Session = Depends(get_db)):
-
-    application = get_application(db, application_id)
-
-    if not application:
-        return {"error": "Application not found"}
-
-    return application
 
 
 
@@ -59,7 +54,13 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
         shutil.copyfileobj(file.file, buffer)
 
     
-    extracted_data = extract_document_info(file_path)
+    try:
+        extracted_data = extract_document_info(file_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Document processing failed"
+        )
 
     print("ia data >", extracted_data)
 
@@ -68,11 +69,15 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
     match = address_validation["match"]
 
     score = get_credit_score()
-    status, explanation = evaluate_application(application, score, match)
+    status, explanation = evaluate_application("credito_personal", application, score, match)
 
     application.credit_score = score
     application.status = status
     application.explanation = explanation
+    application.address_extracted = extracted_data.get("address")
+    application.address_match = match
+    application.evaluation_timestamp = datetime.utcnow()
+    application.decision_engine_version = "v1.0"
 
     db.commit()
     db.refresh(application)
@@ -84,3 +89,14 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
         "explanation": explanation,
         "extracted_data": extracted_data
     }
+
+
+@router.get("/applications/{application_id}")
+def get_application_status(application_id: int, db: Session = Depends(get_db)):
+
+    application = get_application(db, application_id)
+
+    if not application:
+        return {"error": "Application not found"}
+
+    return application

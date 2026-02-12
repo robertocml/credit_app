@@ -8,7 +8,3 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Fintech Credit Engine")
 
 app.include_router(router)
-
-@app.get("/")
-def root():
-    return {"message": "Fintech Credit Engine API running"}
