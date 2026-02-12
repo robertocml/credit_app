@@ -12,6 +12,8 @@ from services.ai_data_extraction import extract_document_info, validate_address_
 import json
 from datetime import datetime
 from models.models import Application
+from fastapi import status as st
+
 
 router = APIRouter()
 
@@ -56,16 +58,22 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
     
     try:
         extracted_data = extract_document_info(file_path)
+
     except Exception as e:
+        error_message = str(e)
+
+        if "429" in error_message:
+            raise HTTPException(
+                status_code=st.HTTP_429_TOO_MANY_REQUESTS,
+                detail="AI service quota exceeded. Please try again later."
+            )
+
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail="Document processing failed"
         )
 
-    print("ia data >", extracted_data)
-
     address_validation = validate_address_match(application.address, extracted_data["address"])
-    print("address validation >", address_validation)
     match = address_validation["match"]
 
     score = get_credit_score()
