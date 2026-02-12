@@ -1,26 +1,18 @@
-import google.generativeai as genai
 import os
 import json
+import mimetypes
+from google import genai
+from google.genai import types
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+client = genai.Client()
 
 def extract_document_info(file_path: str):
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
 
-    mime_type = None
-
-    if file_path.lower().endswith(".pdf"):
-        mime_type = "application/pdf"
-    elif file_path.lower().endswith((".png", ".jpg", ".jpeg")):
-        mime_type = "image/png"  # Gemini acepta igual aunque sea jpg
-    else:
-        raise ValueError("Unsupported file type")
-
-    uploaded_file = genai.upload_file(
-        file_path,
-        mime_type=mime_type
-    )
+    with open(file_path, "rb") as f:
+        file_bytes = f.read()
 
     prompt = """
     Extrae del comprobante:
@@ -28,7 +20,7 @@ def extract_document_info(file_path: str):
     - Dirección completa
     - Fecha de vigencia
 
-    Devuelve SOLO un JSON válido con esta estructura:
+    Devuelve un JSON válido con esta estructura:
     {
         "name": "",
         "address": "",
@@ -36,39 +28,49 @@ def extract_document_info(file_path: str):
     }
     """
 
-    response = model.generate_content(
-        [uploaded_file, prompt],
-        generation_config={
-            "response_mime_type": "application/json"
-        }
-    )
-
-    return json.loads(response.text)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
+                prompt
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        
+        return json.loads(response.text)
+    
+    except Exception as e:
+        print(f"Error en extract_document_info: {e}")
+        return {"name": "", "address": "", "valid_date": ""}
 
 
 def validate_address_match(client_address: str, document_address: str):
-
     prompt = f"""
-    ¿Las siguientes dos direcciones corresponden al mismo lugar?
+    ¿Las siguientes dos direcciones corresponden al mismo lugar? 
+    Considera abreviaturas y variaciones de escritura.
 
-    Dirección del cliente:
-    {client_address}
+    Dirección del cliente: {client_address}
+    Dirección del documento: {document_address}
 
-    Dirección del documento:
-    {document_address}
-
-    Responde SOLO en formato JSON:
+    Responde en formato JSON:
     {{
         "match": true/false,
         "confidence": 0-100
     }}
     """
 
-    response = model.generate_content(
-        prompt,
-        generation_config={
-            "response_mime_type": "application/json"
-        }
-    )
-
-    return json.loads(response.text)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"Error en validate_address_match: {e}")
+        return {"match": False, "confidence": 0}

@@ -54,25 +54,22 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
     
     try:
         extracted_data = extract_document_info(file_path)
-
     except Exception as e:
         error_message = str(e)
+        print("Error AI:", error_message)
+        return {
+            "status": "PENDING",
+            "credit_score": None,
+            "explanation": "Error procesando documento. Intente más tarde. " + error_message,
+            "extracted_data": {}
+        }
 
-        if "429" in error_message:
-            return {
-                "status": "PENDING",
-                "credit_score": None,
-                "explanation": "Error. Por favor intente mas tarde. (AI API quota exceeded)",
-                "extracted_data": {}
-            }
-
-        raise HTTPException(
-            status_code=500,
-            detail="Document processing failed"
-        )
-
-    address_validation = validate_address_match(application.address, extracted_data["address"])
-    match = address_validation["match"]
+    try:
+        address_validation = validate_address_match(application.address, extracted_data.get("address", ""))
+        match = address_validation.get("match", False)
+    except Exception as e:
+        print("Error validando dirección:", e)
+        match = False
 
     score = get_credit_score()
     status, explanation = evaluate_application("credito_personal", application, score, match)
@@ -125,4 +122,13 @@ def get_metrics(db: Session = Depends(get_db)):
         "rejected": rejected,
         "pending": pending,
         "approval_rate_percent": approval_rate
+    }
+
+@router.get("/scorecredito")
+def get_score(id: int):
+    score = get_credit_score()
+    
+    return {
+        "id": id,
+        "score": score
     }
