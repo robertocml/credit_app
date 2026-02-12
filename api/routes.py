@@ -56,14 +56,18 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
         extracted_data = extract_document_info(file_path)
     except Exception as e:
         error_message = str(e)
-        print("Error AI:", error_message)
+
+        if "you exceeded your current quota" in error_message.lower():
+            explanation = "No se pudo extraer la información: cuota de Gemini API excedida."
+        else:
+            explanation = "Error procesando documento. Intenta más tarde. "
+
         return {
             "status": "PENDING",
             "credit_score": None,
-            "explanation": "Error procesando documento. Intente más tarde. " + error_message,
+            "explanation": explanation,
             "extracted_data": {}
         }
-
     try:
         address_validation = validate_address_match(application.address, extracted_data.get("address", ""))
         match = address_validation.get("match", False)

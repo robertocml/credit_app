@@ -44,7 +44,7 @@ def extract_document_info(file_path: str):
     
     except Exception as e:
         print(f"Error en extract_document_info: {e}")
-        return {"name": "", "address": "", "valid_date": ""}
+        raise RuntimeError(f"AI extraction failed: {e}")
 
 
 def validate_address_match(client_address: str, document_address: str):
