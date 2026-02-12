@@ -17,10 +17,6 @@ from repositories.application_repository import create_application, get_applicat
 
 router = APIRouter()
 
-@router.get("/")
-def root():
-    return {"message": "Fintech Credit Engine API running"}
-
 @router.post("/applications")
 def create_new_application(data: ApplicationCreate,db: Session = Depends(get_db)):
 
@@ -63,10 +59,12 @@ def upload_document(application_id: int, file: UploadFile = File(...), db: Sessi
         error_message = str(e)
 
         if "429" in error_message:
-            raise HTTPException(
-                status_code=st.HTTP_429_TOO_MANY_REQUESTS,
-                detail="AI service quota exceeded. Please try again later."
-            )
+            return {
+                "status": "PENDING",
+                "credit_score": None,
+                "explanation": "Error. Por favor intente mas tarde. (AI API quota exceeded)",
+                "extracted_data": {}
+            }
 
         raise HTTPException(
             status_code=500,

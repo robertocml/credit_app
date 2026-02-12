@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Credit Engine</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #f4f6f9;
+            padding-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .card {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .metric {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container">
+    <a class="navbar-brand" href="/">Credit Engine</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+    <h1>📊 Dashboard de Métricas</h1>
+
+    <div class="row mb-4" id="metrics-cards">
+        <!-- Cards dinámicas -->
+    </div>
+
+    <div class="card mb-4 p-3">
+        <canvas id="statusChart" height="150"></canvas>
+    </div>
+</div>
+
+<script>
+async function loadMetrics() {
+    const response = await fetch("/metrics");
+    const data = await response.json();
+
+    // Crear cards
+    const cardsContainer = document.getElementById("metrics-cards");
+    cardsContainer.innerHTML = `
+        <div class="col-md-3 mb-3">
+            <div class="card text-center p-3">
+                <div class="metric">${data.total}</div>
+                <div class="metric-label">Total Solicitudes</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center p-3">
+                <div class="metric">${data.approved}</div>
+                <div class="metric-label">Aprobadas</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center p-3">
+                <div class="metric">${data.rejected}</div>
+                <div class="metric-label">Rechazadas</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center p-3">
+                <div class="metric">${data.pending}</div>
+                <div class="metric-label">Pendientes</div>
+            </div>
+        </div>
+    `;
+
+    // Chart de estados
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Aprobadas', 'Rechazadas', 'Pendientes'],
+            datasets: [{
+                data: [data.approved, data.rejected, data.pending],
+                backgroundColor: ['#3366FF', '#FF3333', '#FFA500'],
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+// Cargar métricas al iniciar
+loadMetrics();
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

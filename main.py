@@ -1,10 +1,29 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import os
+
 from api.routes import router
-from db.database import engine
-from models import models
 
-models.Base.metadata.create_all(bind=engine)
+app = FastAPI(title="Fintech Credit Engine API")
 
-app = FastAPI(title="Fintech Credit Engine")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(router)
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/", include_in_schema=False)
+def serve_frontend():
+    return FileResponse("frontend/index.html")
+
+
+@app.get("/dashboard", include_in_schema=False)
+def serve_dashboard():
+    return FileResponse(os.path.join("frontend", "dashboard.html"))
